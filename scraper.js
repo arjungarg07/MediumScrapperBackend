@@ -21,15 +21,14 @@ class Scraper {
 
     constructor(settings) {
         const { 
-            pageLimitForSeedUrls = 5,
-            concurrenyLimit = 10,
+            concurrencyLimit = 10,
             delay = 1000,
-            tags = ['Self','Relationships','Data Science','Programming','Productivity','Javascript','Machine Learning','Politics','Health']
+            tags = ['self']
         } = settings || {};
         this.tags = tags;
         this.seedUrls = [];
         this.delay = delay;
-        this.concurrenyLimit = concurrenyLimit;
+        this.concurrencyLimit = concurrencyLimit;
         this.seedPointer = 0;
     }
 
@@ -45,10 +44,10 @@ class Scraper {
             item.tags = item.tags.join(',');
         });
         try{
-            const insertQuery = 'INSERT INTO medium_scraper.posts (title, url, clapCount, author, tags, latestPublishedAt) VALUES (?,?,?,?,?,?)';
+            const insertQuery = 'INSERT INTO medium_scraper.posts (title, url, clapCount, author, tags, latestPublishedAt, readingTime, subtitle) VALUES (?,?,?,?,?,?,?,?)';
             console.log(data);
             for(let i=0;i<data.length;i++){
-                const result = await commonQuery(insertQuery,[data[i].title,data[i].url,data[i].clapCount,data[i].author,data[i].tags,data[i].latestPublishedAt]);
+                const result = await commonQuery(insertQuery,[data[i].title,data[i].url,data[i].clapCount,data[i].author,data[i].tags,data[i].latestPublishedAt, data[i].readingTime, data[i].subtitle]);
                 console.log(result);
             }
         } catch(err){
@@ -70,6 +69,10 @@ class Scraper {
             let finalData = [];
             postIds.forEach(postId => {
                 let postIdData = json[postId];
+                let postKeys = Object.keys(postIdData);
+                let contentId = postKeys.filter(item => item.startsWith('extendedPreviewContent'));
+                let content = postIdData[contentId[0]];
+                console.log(content);
                 let userId = postIdData.creator.__ref;
                 let userData = json[userId];
                 let currentTags = [];
@@ -77,6 +80,7 @@ class Scraper {
                     tagSet.add(tag.__ref.replace(/Tag:/g, ''));
                     currentTags.push(tag.__ref.replace(/Tag:/g, ''));
                 });
+                console.log(postIdData);
                 finalData.push({
                     latestPublishedAt: new Date(postIdData.latestPublishedAt),
                     title: postIdData.title,
@@ -84,6 +88,8 @@ class Scraper {
                     clapCount: postIdData.clapCount,
                     author: userData.name,
                     tags: currentTags,
+                    readingTime: postIdData.readingTime,
+                    subtitle: content.subtitle,
                 })
             });
             // console.log(finalData);
@@ -121,7 +127,7 @@ class Scraper {
     async start(){
         this.populateSeedUrls();
 
-        for (let i=0; i<this.concurrenyLimit;i++) {
+        for (let i=0; i<this.concurrencyLimit;i++) {
             this.recursiveFetch();
         }
     }
