@@ -1,7 +1,7 @@
 const { default: axios } = require("axios");
 const cheerio = require("cheerio");
-const { commonQuery } = require('./db');
-
+// const { commonQuery } = require('./db');
+const Post  = require('./models/postModel');
 class Scraper {
     populateSeedUrls(){
         this.tags.forEach(tag => {
@@ -22,7 +22,7 @@ class Scraper {
     constructor(settings) {
         const { 
             concurrencyLimit = 10,
-            delay = 1000,
+            delay = 20000,
             tags = ['self']
         } = settings || {};
         this.tags = tags;
@@ -44,11 +44,29 @@ class Scraper {
             item.tags = item.tags.join(',');
         });
         try{
-            const insertQuery = 'INSERT INTO medium_scraper.posts (title, url, clapCount, author, tags, latestPublishedAt, readingTime, subtitle) VALUES (?,?,?,?,?,?,?,?)';
-            for(let i=0;i<data.length;i++){
-                await commonQuery(insertQuery,[data[i].title,data[i].url,data[i].clapCount,data[i].author,data[i].tags,data[i].latestPublishedAt, data[i].readingTime, data[i].subtitle]);
-            }
+            // const insertQuery = 'INSERT INTO medium_scraper.posts (title, url, clapCount, author, tags, latestPublishedAt, readingTime, subtitle) VALUES (?,?,?,?,?,?,?,?)';
+            // for(let i=0;i<data.length;i++){
+            //     await commonQuery(insertQuery,[data[i].title,data[i].url,data[i].clapCount,data[i].author,data[i].tags,data[i].latestPublishedAt, data[i].readingTime, data[i].subtitle]);
+            // }
+            // bulk write posts in db and handle duplicates
+            let bulkData = [];
+            data.forEach(item => {
+                bulkData.push({
+                    updateOne: {
+                        filter: {
+                            title: item.title
+                        },
+                        update: {
+                            $set: item
+                        },
+                        upsert: true
+                    }
+                });
+            });
+            const result = await Post.bulkWrite(bulkData);
+            console.log(result);
         } catch(err){
+            console.log(err);
             return;
         }
     }
@@ -95,6 +113,7 @@ class Scraper {
             // console.log(tagUrls);
             await this.saveDataInDB(finalData);
         } catch (err) {
+            console.log(err);
             return;
         }
     }
@@ -110,12 +129,12 @@ class Scraper {
             const response = await axios.get(currentUrl);
             this.requestCount--;
             await this.fetchData(response);
-            // await this.sleep(this.delay + this.getRandomArbitrary(100, 500)); // uncomment it to simulate human behaviour
+            await this.sleep(this.delay + this.getRandomArbitrary(100, 500)); // uncomment it to simulate human behaviour
             this.recursiveFetch();
 
             return;
         } catch(err){
-            // console.log(err);
+            console.log(err);
             return;
         }
     }

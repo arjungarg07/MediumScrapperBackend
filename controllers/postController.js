@@ -1,5 +1,6 @@
 const Scraper = require('../scraper');
-const {commonQuery} = require('../db');
+// const {commonQuery} = require('../db');
+const Post = require("../models/postModel");
 
 class postController{
     // Get all posts
@@ -7,12 +8,14 @@ class postController{
         try {
             const tag = req.params.tag;
             // get latest 10 posts from db with tag
-            const scraper = new Scraper({concurrencyLimit: 5, delay: 200, tags: [tag] });
+            // const scraper = new Scraper({concurrencyLimit: 5, delay: 200, tags: [tag] });
             // scraper.start();
-            const query = `SELECT * FROM medium_scraper.posts WHERE tags LIKE '%${tag}%' ORDER BY latestPublishedAt DESC LIMIT 10`;
-            const results = await commonQuery(query);
+            // const query = `SELECT * FROM medium_scraper.posts WHERE tags LIKE '%${tag}%' ORDER BY latestPublishedAt DESC LIMIT 10`;
+
+            const posts = await Post.find({tags: tag});
             // start scraper
-            res.send(results);
+            console.log(posts);
+            res.send({status: 1, data: posts});
         } catch (err) {
             console.log(err);
             res.status(500).json({status: 0, msg: 'Internal Server Error'});
