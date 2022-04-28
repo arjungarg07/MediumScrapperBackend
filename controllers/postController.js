@@ -11,8 +11,8 @@ class postController{
             // const scraper = new Scraper({concurrencyLimit: 5, delay: 200, tags: [tag] });
             // scraper.start();
             // const query = `SELECT * FROM medium_scraper.posts WHERE tags LIKE '%${tag}%' ORDER BY latestPublishedAt DESC LIMIT 10`;
-
-            const posts = await Post.find({tags: tag});
+            // find posts having tags like tag
+            const posts = await Post.find({tags: {$regex: tag, $options: 'i'}}).limit(10).sort({latestPublishedAt: -1});
             // start scraper
             console.log(posts);
             res.send({status: 1, data: posts});
